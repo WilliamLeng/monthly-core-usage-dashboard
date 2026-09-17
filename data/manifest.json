@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-09-01 18:55:26",
+  "months": [
+    {
+      "month": "2026-03",
+      "label": "3月",
+      "file": "data/monthly/2026-03.json"
+    },
+    {
+      "month": "2026-04",
+      "label": "4月",
+      "file": "data/monthly/2026-04.json"
+    },
+    {
+      "month": "2026-05",
+      "label": "5月",
+      "file": "data/monthly/2026-05.json"
+    },
+    {
+      "month": "2026-06",
+      "label": "6月",
+      "file": "data/monthly/2026-06.json"
+    },
+    {
+      "month": "2026-07",
+      "label": "7月",
+      "file": "data/monthly/2026-07.json"
+    },
+    {
+      "month": "2026-08",
+      "label": "8月",
+      "file": "data/monthly/2026-08.json"
+    }
+  ],
+  "functions": [
+    "访问",
+    "AI内容引用",
+    "内容工场-找产品",
+    "群发",
+    "用户服务卡",
+    "SOP干法",
+    "内容工场-交互内容",
+    "AI问答",
+    "厨房健康报告",
+    "上门教学",
+    "选购指南",
+    "活动管理",
+    "内容工场-找案例",
+    "上门设计",
+    "导购名片",
+    "服务管理"
+  ],
+  "privacy_note": "仅包含大区、分公司、功能维度汇总数据，不包含人员姓名、编码或个人明细。"
+}

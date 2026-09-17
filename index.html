@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>三类人员核心功能使用看板</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="login-overlay" id="loginOverlay">
+    <section class="login-card">
+      <div class="login-brand">
+        <span class="brand-mark">%</span>
+        <div>
+          <h1>三类人员核心功能使用看板</h1>
+        </div>
+      </div>
+      <p class="login-copy">请输入访问密码后查看数据看板。此登录仅用于内部访问提示，不作为严格权限控制。</p>
+      <div class="login-form">
+        <input id="passwordInput" type="password" placeholder="请输入访问密码">
+        <button id="loginButton" type="button">进入看板</button>
+      </div>
+      <p class="login-error" id="loginError">密码错误，请重新输入。</p>
+      <div class="theme-choice" aria-label="主题切换">
+        <button class="theme-button" type="button" data-theme-value="light">浅色</button>
+        <button class="theme-button" type="button" data-theme-value="dark">暗色高级</button>
+      </div>
+    </section>
+  </div>
+
+  <main class="page">
+    <header class="topbar">
+      <div class="brand">
+        <h1>三类人员核心功能使用看板</h1>
+        <p>总部视角查看整体情况、分公司表现、功能推广重点；2026年3—7月保留历史口径，2026年8月起使用统一7岗位新口径。</p>
+      </div>
+      <div class="publish-status">
+        <span id="generatedAt">数据生成：--</span>
+        <span id="privacyNote">仅展示汇总数据</span>
+        <button id="themeToggle" class="header-theme-button" type="button">切换暗色</button>
+      </div>
+    </header>
+
+    <section class="filter-bar" aria-label="筛选条件">
+      <label>
+        月份
+        <select id="monthSelect"></select>
+      </label>
+      <label>
+        大区
+        <select id="regionSelect"></select>
+      </label>
+      <label>
+        分公司
+        <select id="companySelect"></select>
+      </label>
+      <label>
+        核心功能
+        <select id="functionSelect"></select>
+      </label>
+    </section>
+
+    <section class="summary-grid" id="summaryGrid" aria-label="核心指标"></section>
+
+    <section class="panel analysis-panel">
+      <div class="section-head">
+        <div>
+          <h2 id="analysisTitle">本月总部分析</h2>
+          <p id="analysisScope">根据当前筛选范围自动生成。</p>
+        </div>
+      </div>
+      <div class="analysis-grid" id="analysisGrid"></div>
+    </section>
+
+    <section class="two-column">
+      <article class="panel">
+        <div class="section-head">
+          <div>
+            <h2 id="performanceTitle">大区与分公司表现</h2>
+            <p id="performanceDesc">总部先看区域差异，再定位具体分公司。</p>
+          </div>
+        </div>
+        <div class="matrix" id="performanceMatrix"></div>
+      </article>
+
+      <aside class="panel">
+        <div class="section-head">
+          <div>
+            <h2 id="focusTitle">本月关注名单</h2>
+            <p id="focusDesc">查看需关注对象和可复盘对象。</p>
+          </div>
+        </div>
+        <ul class="focus-list" id="focusList"></ul>
+      </aside>
+    </section>
+
+    <section class="panel section-gap">
+      <div class="section-head">
+        <div>
+          <h2>按功能分析</h2>
+          <p>按功能看推广重点：哪些功能已经成为基础使用，哪些功能需要培训或专项推动。</p>
+        </div>
+      </div>
+      <div class="three-column" id="functionCards"></div>
+      <div class="function-table">
+        <table>
+          <thead>
+            <tr>
+              <th>功能</th>
+              <th><button class="sort-button" type="button" data-table="function" data-sort="user_count">使用人数</button></th>
+              <th><button class="sort-button" type="button" data-table="function" data-sort="usage_rate">使用率</button></th>
+              <th><button class="sort-button" type="button" data-table="function" data-sort="mom">环比</button></th>
+              <th><button class="sort-button" type="button" data-table="function" data-sort="covered_companies">覆盖分公司</button></th>
+              <th><button class="sort-button" type="button" data-table="function" data-sort="risk_count">关注分公司</button></th>
+              <th>下一步动作</th>
+            </tr>
+          </thead>
+          <tbody id="functionTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="table-panel section-gap">
+      <div class="section-head">
+        <div>
+          <h2>汇总数据表</h2>
+          <p>展示当前筛选后的分公司整体汇总结果，不含人员明细。</p>
+        </div>
+      </div>
+      <div class="function-table">
+        <table>
+          <thead>
+            <tr>
+              <th>月份</th>
+              <th>大区</th>
+              <th>分公司</th>
+              <th><button class="sort-button" type="button" data-table="detail" data-sort="total_people">三类人员人数</button></th>
+              <th><button id="detailUserHeader" class="sort-button" type="button" data-table="detail" data-sort="core_user_count">使用核心功能人数</button></th>
+              <th><button id="detailRateHeader" class="sort-button" type="button" data-table="detail" data-sort="core_usage_rate">核心功能使用率</button></th>
+              <th><button id="detailCountHeader" class="sort-button" type="button" data-table="detail" data-sort="total_use_count">总使用次数</button></th>
+            </tr>
+          </thead>
+          <tbody id="detailTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

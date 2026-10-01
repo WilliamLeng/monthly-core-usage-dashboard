@@ -33,6 +33,29 @@ BASE_COLUMNS = {
     "核心功能使用率",
 }
 
+# 看板功能下拉/功能表使用“所有月份功能的并集”，不再只取最新月。
+# 既有功能按此前发布顺序排列；不在列表中的新功能（如 2026-09 起的改装清单）
+# 按首次出现的月份顺序自动追加。某月数据中没有的功能，前端显示“—”（无数据），不补 0。
+FUNCTION_ORDER = [
+    "访问",
+    "AI内容引用",
+    "内容工场-找产品",
+    "群发",
+    "用户服务卡",
+    "SOP干法",
+    "内容工场-交互内容",
+    "AI问答",
+    "厨房健康报告",
+    "上门教学",
+    "选购指南",
+    "活动管理",
+    "内容工场-找案例",
+    "上门设计",
+    "导购名片",
+    "服务管理",
+    "改装清单",
+]
+
 EXCLUDED_REGIONS = {"零售业务部", "未填写", "幸福家"}
 EXCLUDED_COMPANIES = {
     "上海幸福家",
@@ -229,16 +252,26 @@ def natural_month_label(month):
     return f"{int(matched.group(2))}月"
 
 
+def union_functions(month_function_names):
+    seen = []
+    for names in month_function_names:
+        for name in names:
+            if name not in seen:
+                seen.append(name)
+    ordered = [name for name in FUNCTION_ORDER if name in seen]
+    return ordered + [name for name in seen if name not in ordered]
+
+
 def main():
     MONTHLY_DIR.mkdir(parents=True, exist_ok=True)
 
     manifest_months = []
-    functions = []
+    month_function_names = []
     for month, path in MONTH_FILES:
         if not path.exists():
             raise FileNotFoundError(path)
         data = summarize_month(month, path)
-        functions = data["functions"]
+        month_function_names.append([item["name"] for item in data["functions"]])
         output_path = MONTHLY_DIR / f"{month}.json"
         output_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         manifest_months.append(
@@ -252,7 +285,7 @@ def main():
     manifest = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "months": manifest_months,
-        "functions": [item["name"] for item in functions],
+        "functions": union_functions(month_function_names),
         "privacy_note": "仅包含大区、分公司、功能维度汇总数据，不包含人员姓名、编码或个人明细。",
     }
     (OUTPUT_DIR / "manifest.json").write_text(

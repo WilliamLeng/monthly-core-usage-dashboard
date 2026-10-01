@@ -91,11 +91,16 @@ function initAccessGate() {
   });
 }
 
+// null = 该月数据中没有这个功能（不是 0），显示为“—”。
+const NO_DATA = "—";
+
 function fmtNumber(value) {
+  if (value === null) return NO_DATA;
   return Number(value || 0).toLocaleString("zh-CN");
 }
 
 function fmtPercent(value) {
+  if (value === null) return NO_DATA;
   return `${(Number(value || 0) * 100).toFixed(1)}%`;
 }
 
@@ -113,6 +118,9 @@ function changeClass(value) {
 function sortRows(rows, key, direction) {
   const multiplier = direction === "asc" ? 1 : -1;
   return rows.sort((a, b) => {
+    // 无数据（null）始终排在最后
+    if (a[key] === null && b[key] !== null) return 1;
+    if (b[key] === null && a[key] !== null) return -1;
     const left = a[key] ?? 0;
     const right = b[key] ?? 0;
     return (left - right) * multiplier;
@@ -153,13 +161,20 @@ function getScopeCompanies(data = getCurrentData()) {
   });
 }
 
+function monthHasFunction(functionName, data = getCurrentData()) {
+  return Boolean(data && data.functions.some((item) => item.name === functionName));
+}
+
 function getFunctionValue(record, functionName = state.selectedFunction) {
   if (functionName === "全部核心功能") return null;
   return record.functions.find((item) => item.name === functionName) || null;
 }
 
-function aggregateScope(companies, functionName = state.selectedFunction) {
+function aggregateScope(companies, functionName = state.selectedFunction, data = getCurrentData()) {
   const totalPeople = companies.reduce((sum, item) => sum + item.total_people, 0);
+  if (functionName !== "全部核心功能" && !monthHasFunction(functionName, data)) {
+    return { total_people: totalPeople, user_count: null, use_count: null, usage_rate: null, company_count: companies.length, available: false };
+  }
   if (functionName === "全部核心功能") {
     const coreUserCount = companies.reduce((sum, item) => sum + item.core_user_count, 0);
     return {
@@ -189,7 +204,7 @@ function scopeForMonth(month) {
     const companyMatch = state.selectedCompany === "全部分公司" || item.company === state.selectedCompany;
     return regionMatch && companyMatch;
   });
-  return aggregateScope(companies);
+  return aggregateScope(companies, state.selectedFunction, data);
 }
 
 function scopeLabel() {
@@ -205,17 +220,22 @@ function getMom() {
   if (!previous) return null;
   const currentScope = aggregateScope(getScopeCompanies());
   const previousScope = scopeForMonth(previous);
+  if (currentScope.usage_rate === null) return null;
   if (!previousScope || !previousScope.usage_rate) return null;
   return currentScope.usage_rate - previousScope.usage_rate;
 }
 
-function functionAcrossScope(functionName, companies = getScopeCompanies()) {
+function functionAcrossScope(functionName, companies = getScopeCompanies(), data = getCurrentData()) {
   const totalPeople = companies.reduce((sum, item) => sum + item.total_people, 0);
+  if (!monthHasFunction(functionName, data)) {
+    return { name: functionName, available: false, user_count: null, usage_rate: null, use_count: null, covered_companies: null };
+  }
   const userCount = companies.reduce((sum, item) => sum + (item.functions.find((fn) => fn.name === functionName)?.user_count || 0), 0);
   const useCount = companies.reduce((sum, item) => sum + (item.functions.find((fn) => fn.name === functionName)?.use_count || 0), 0);
   const coveredCompanies = companies.filter((item) => (item.functions.find((fn) => fn.name === functionName)?.user_count || 0) > 0).length;
   return {
     name: functionName,
+    available: true,
     user_count: userCount,
     usage_rate: totalPeople ? userCount / totalPeople : 0,
     use_count: useCount,
@@ -233,11 +253,13 @@ function functionMom(functionName) {
     const companyMatch = state.selectedCompany === "全部分公司" || item.company === state.selectedCompany;
     return regionMatch && companyMatch;
   });
-  const last = functionAcrossScope(functionName, previousCompanies);
+  const last = functionAcrossScope(functionName, previousCompanies, previousData);
+  if (!current.available || !last.available) return null;
   return current.usage_rate - last.usage_rate;
 }
 
 function riskCompaniesForFunction(functionName, companies = getScopeCompanies()) {
+  if (!monthHasFunction(functionName)) return [];
   const average = functionAcrossScope(functionName, companies).usage_rate;
   return companies.filter((item) => {
     const fn = item.functions.find((entry) => entry.name === functionName);
@@ -278,11 +300,12 @@ function renderSummary() {
     ? companies.filter((item) => item.core_usage_rate < scope.usage_rate * 0.7).length
     : riskCompaniesForFunction(state.selectedFunction, companies).length;
 
+  const noData = scope.available === false;
   els.summaryGrid.innerHTML = [
     ["三类人员总人数", fmtNumber(scope.total_people), `覆盖 ${scope.company_count} 家分公司`, ""],
     [state.selectedFunction === "全部核心功能" ? "使用核心功能人数" : "功能使用人数", fmtNumber(scope.user_count), `使用率 ${fmtPercent(scope.usage_rate)}`, ""],
     ["使用率", fmtPercent(scope.usage_rate), `环比 ${fmtChange(mom)}`, changeClass(mom)],
-    ["重点关注分公司", fmtNumber(riskCount), "低于当前范围均值 30% 以上", riskCount ? "down" : ""],
+    ["重点关注分公司", noData ? NO_DATA : fmtNumber(riskCount), noData ? "当月数据中无此功能" : "低于当前范围均值 30% 以上", riskCount ? "down" : ""],
   ].map(([title, value, footer, cls]) => `
     <article class="kpi-card">
       <p class="kpi-title">${title}</p>
@@ -299,7 +322,7 @@ function renderAnalysis() {
   const functionStats = state.manifest.functions.map((name) => ({
     ...functionAcrossScope(name, companies),
     mom: functionMom(name),
-  }));
+  })).filter((item) => item.available);
   const topFunction = [...functionStats].sort((a, b) => b.usage_rate - a.usage_rate)[0];
   const growthFunction = [...functionStats].filter((item) => item.mom !== null).sort((a, b) => b.mom - a.mom)[0];
   const lowFunction = [...functionStats].sort((a, b) => a.usage_rate - b.usage_rate)[0];
@@ -421,6 +444,7 @@ function renderFocusList() {
 }
 
 function functionAction(item) {
+  if (!item.available) return "当月无该功能数据";
   if (item.usage_rate >= 0.45) return "补齐低使用分公司";
   if (item.mom !== null && item.mom > 0.03) return "复盘增长来源并复制";
   if (item.usage_rate < 0.05) return "先判断真实使用场景";
@@ -435,15 +459,16 @@ function renderFunctionAnalysis() {
     return {
       ...current,
       mom,
-      risk_count: riskCompaniesForFunction(name, companies).length,
+      risk_count: current.available ? riskCompaniesForFunction(name, companies).length : null,
     };
   });
+  const availableRows = rows.filter((item) => item.available);
   sortRows(rows, state.functionSort, state.functionSortDirection);
   updateSortButtons("function", state.functionSort, state.functionSortDirection);
 
-  const top = rows.slice().sort((a, b) => b.usage_rate - a.usage_rate)[0];
-  const growth = rows.filter((item) => item.mom !== null).slice().sort((a, b) => b.mom - a.mom)[0];
-  const low = rows.slice().sort((a, b) => a.usage_rate - b.usage_rate)[0];
+  const top = availableRows.slice().sort((a, b) => b.usage_rate - a.usage_rate)[0];
+  const growth = availableRows.filter((item) => item.mom !== null).slice().sort((a, b) => b.mom - a.mom)[0];
+  const low = availableRows.slice().sort((a, b) => a.usage_rate - b.usage_rate)[0];
   els.functionCards.innerHTML = [
     ["基础能力", `${top.name} 使用人数 ${fmtNumber(top.user_count)}，使用率 ${fmtPercent(top.usage_rate)}，覆盖 ${top.covered_companies} 家分公司。`],
     ["增长机会", growth ? `${growth.name} 环比 ${fmtChange(growth.mom)}，可复盘高表现区域。` : "暂无上月可比数据。"],
@@ -481,6 +506,17 @@ function renderDetailTable() {
         display_user_count: company.core_user_count,
         display_usage_rate: company.core_usage_rate,
         display_use_count: company.total_use_count,
+      };
+    }
+    if (!monthHasFunction(state.selectedFunction)) {
+      return {
+        ...company,
+        display_user_count: null,
+        display_usage_rate: null,
+        display_use_count: null,
+        core_user_count: null,
+        core_usage_rate: null,
+        total_use_count: null,
       };
     }
     const fn = getFunctionValue(company, state.selectedFunction) || {};
